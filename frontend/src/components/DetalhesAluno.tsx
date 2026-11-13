@@ -9,10 +9,18 @@ export default function DetalhesAluno({ id }: { id: string }) {
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [erro, setErro] = useState('');
 
+  // busca o aluno na API quando a janela abre
   useEffect(() => {
-    buscarAluno(id)
-      .then(setAluno)
-      .catch((e) => setErro(e instanceof Error ? e.message : 'Erro inesperado'));
+    async function carregar() {
+      try {
+        const dados = await buscarAluno(id);
+        setAluno(dados);
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : 'Erro inesperado');
+      }
+    }
+
+    carregar();
   }, [id]);
 
   if (erro) return <Mensagem tipo="erro" texto={erro} />;

@@ -13,32 +13,37 @@ import { Aluno } from './schemas/aluno.schema.js';
 export class AlunosService {
   constructor(
     @InjectModel(Aluno.name)
-    private readonly alunoModel: Model<Aluno>,
+    private alunoModel: Model<Aluno>,
   ) {}
 
-  private async validarEmailUnico(email: string, idIgnorado?: string) {
-    const existente = await this.alunoModel.findOne({
-      email: email.trim().toLowerCase(),
+  async create(dto: CreateAlunoDto) {
+    // confere se já existe alguém com esse email
+    const emailExiste = await this.alunoModel.findOne({
+      email: dto.email.toLowerCase(),
     });
-    if (existente && existente._id !== idIgnorado) {
+    if (emailExiste) {
       throw new BadRequestException('Já existe um aluno com este email');
     }
-  }
 
-  async create(dto: CreateAlunoDto) {
-    await this.validarEmailUnico(dto.email);
     return this.alunoModel.create(dto);
   }
 
-  findAll(busca?: string) {
-    const termo = busca?.trim();
-    let filtro = {};
-    if (termo) {
-      const escapado = termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(escapado, 'i');
-      filtro = { $or: [{ nome: regex }, { email: regex }] };
+  async findAll(busca?: string) {
+    // pega todos os alunos do banco
+    const alunos = await this.alunoModel.find().sort({ criado_em: 1 });
+
+    // se não tem busca, devolve todos
+    if (!busca) {
+      return alunos;
     }
-    return this.alunoModel.find(filtro).sort({ criado_em: 1 });
+
+    // se tem busca, filtra por nome ou email
+    const termo = busca.toLowerCase();
+    return alunos.filter(
+      (aluno) =>
+        aluno.nome.toLowerCase().includes(termo) ||
+        aluno.email.toLowerCase().includes(termo),
+    );
   }
 
   async findOne(id: string) {
@@ -51,16 +56,32 @@ export class AlunosService {
 
   async update(id: string, dto: UpdateAlunoDto) {
     const aluno = await this.findOne(id);
+
+    // só confere o email se ele foi enviado
     if (dto.email) {
-      await this.validarEmailUnico(dto.email, id);
+      const outro = await this.alunoModel.findOne({
+        email: dto.email.toLowerCase(),
+      });
+      // se achou e não é o próprio aluno, o email já está em uso
+      if (outro && outro._id !== id) {
+        throw new BadRequestException('Já existe um aluno com este email');
+      }
     }
+
     aluno.set(dto);
     return aluno.save();
   }
 
   async replace(id: string, dto: CreateAlunoDto) {
     const aluno = await this.findOne(id);
-    await this.validarEmailUnico(dto.email, id);
+
+    const outro = await this.alunoModel.findOne({
+      email: dto.email.toLowerCase(),
+    });
+    if (outro && outro._id !== id) {
+      throw new BadRequestException('Já existe um aluno com este email');
+    }
+
     aluno.set(dto);
     return aluno.save();
   }

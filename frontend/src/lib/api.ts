@@ -1,50 +1,69 @@
-import { Aluno, DadosAluno } from '@/types/aluno.ts';
+import { Aluno, DadosAluno } from '@/types/aluno';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-async function requisicao<T>(caminho: string, opcoes?: RequestInit): Promise<T> {
-  let res: Response;
+
+async function chamarApi(caminho: string, opcoes?: RequestInit) {
+  let resposta: Response;
+
   try {
-    res = await fetch(`${API}${caminho}`, opcoes);
+    resposta = await fetch(`${API}${caminho}`, opcoes);
   } catch {
     throw new Error('Não foi possível conectar à API. Ela está ligada?');
   }
 
-  if (!res.ok) {
-    let texto = 'Erro inesperado. Tente novamente.';
+
+  if (!resposta.ok) {
+    let mensagem = 'Erro inesperado. Tente novamente.';
     try {
-      const corpo = await res.json();
-      texto = Array.isArray(corpo.message)
-        ? corpo.message.join(', ')
-        : (corpo.message ?? texto);
+      const corpo = await resposta.json();
+      
+      if (Array.isArray(corpo.message)) {
+        mensagem = corpo.message.join(', ');
+      } else if (corpo.message) {
+        mensagem = corpo.message;
+      }
     } catch {
-      // resposta sem JSON: mantém a mensagem padrão
+      
     }
-    throw new Error(texto);
+    throw new Error(mensagem);
   }
 
-  return res.json() as Promise<T>;
+  return resposta;
 }
 
-export const listarAlunos = (busca = '') =>
-  requisicao<Aluno[]>(`/alunos?busca=${encodeURIComponent(busca)}`);
+export async function listarAlunos(busca = ''): Promise<Aluno[]> {
+  const resposta = await chamarApi(`/alunos?busca=${encodeURIComponent(busca)}`);
+  return resposta.json();
+}
 
-export const buscarAluno = (id: string) => requisicao<Aluno>(`/alunos/${id}`);
+export async function buscarAluno(id: string): Promise<Aluno> {
+  const resposta = await chamarApi(`/alunos/${id}`);
+  return resposta.json();
+}
 
-export const criarAluno = (dados: DadosAluno) =>
-  requisicao<Aluno>('/alunos', {
+export async function criarAluno(dados: DadosAluno): Promise<Aluno> {
+  const resposta = await chamarApi('/alunos', {
     method: 'POST',
-    headers: JSON_HEADERS,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados),
   });
+  return resposta.json();
+}
 
-export const atualizarAluno = (id: string, dados: DadosAluno) =>
-  requisicao<Aluno>(`/alunos/${id}`, {
+export async function atualizarAluno(
+  id: string,
+  dados: DadosAluno,
+): Promise<Aluno> {
+  const resposta = await chamarApi(`/alunos/${id}`, {
     method: 'PUT',
-    headers: JSON_HEADERS,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados),
   });
+  return resposta.json();
+}
 
-export const excluirAluno = (id: string) =>
-  requisicao<{ mensagem: string }>(`/alunos/${id}`, { method: 'DELETE' });
+export async function excluirAluno(id: string) {
+  const resposta = await chamarApi(`/alunos/${id}`, { method: 'DELETE' });
+  return resposta.json();
+}

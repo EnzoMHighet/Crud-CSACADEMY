@@ -8,55 +8,45 @@ import Modal from '@/components/Modal';
 import { excluirAluno, listarAlunos } from '@/lib/api';
 import { Aluno } from '@/types/aluno';
 
-type Feedback = { tipo: 'sucesso' | 'erro'; texto: string };
-
-const textoErro = (e: unknown) =>
-  e instanceof Error ? e.message : 'Erro inesperado';
-
 export default function Home() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
-  const [termo, setTermo] = useState('');
-  const [versao, setVersao] = useState(0);
-  const [mensagem, setMensagem] = useState<Feedback | null>(null);
+
+  // aviso verde (sucesso) ou vermelho (erro) que aparece no topo
+  const [avisoTipo, setAvisoTipo] = useState<'sucesso' | 'erro'>('sucesso');
+  const [avisoTexto, setAvisoTexto] = useState('');
+
+  // controle das janelas que aparecem por cima da tela
   const [formAberto, setFormAberto] = useState(false);
   const [alunoEmEdicao, setAlunoEmEdicao] = useState<Aluno | null>(null);
   const [detalheId, setDetalheId] = useState<string | null>(null);
 
-  // Espera 400 ms depois da última tecla antes de buscar (debounce)
+  // busca a lista de alunos na API
+  async function carregarAlunos() {
+    try {
+      const dados = await listarAlunos(busca);
+      setAlunos(dados);
+      setErro('');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro inesperado');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  // carrega a lista quando a página abre e sempre que a busca muda
   useEffect(() => {
-    const t = setTimeout(() => setTermo(busca), 400);
-    return () => clearTimeout(t);
+    carregarAlunos();
   }, [busca]);
 
-  // Carrega a lista ao abrir, ao mudar a busca e após qualquer alteração
-  useEffect(() => {
-    let cancelado = false;
-    listarAlunos(termo)
-      .then((dados) => {
-        if (cancelado) return;
-        setAlunos(dados);
-        setErro('');
-      })
-      .catch((e) => {
-        if (!cancelado) setErro(textoErro(e));
-      })
-      .finally(() => {
-        if (!cancelado) setCarregando(false);
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [termo, versao]);
-
-  // Some com a mensagem depois de 4 segundos
-  useEffect(() => {
-    if (!mensagem) return;
-    const t = setTimeout(() => setMensagem(null), 4000);
-    return () => clearTimeout(t);
-  }, [mensagem]);
+  // mostra o aviso e some com ele depois de 4 segundos
+  function mostrarAviso(tipo: 'sucesso' | 'erro', texto: string) {
+    setAvisoTipo(tipo);
+    setAvisoTexto(texto);
+    setTimeout(() => setAvisoTexto(''), 4000);
+  }
 
   function abrirNovo() {
     setAlunoEmEdicao(null);
@@ -73,20 +63,25 @@ export default function Home() {
     setAlunoEmEdicao(null);
   }
 
+  // o formulário chama essa função quando salva com sucesso
   function aoSalvar(texto: string) {
     fecharForm();
-    setMensagem({ tipo: 'sucesso', texto });
-    setVersao((v) => v + 1);
+    mostrarAviso('sucesso', texto);
+    carregarAlunos();
   }
 
   async function excluir(aluno: Aluno) {
-    if (!window.confirm(`Tem certeza que deseja excluir ${aluno.nome}?`)) return;
+    const confirmou = window.confirm(
+      `Tem certeza que deseja excluir ${aluno.nome}?`,
+    );
+    if (!confirmou) return;
+
     try {
       await excluirAluno(aluno.id);
-      setMensagem({ tipo: 'sucesso', texto: 'Aluno excluído com sucesso!' });
-      setVersao((v) => v + 1);
+      mostrarAviso('sucesso', 'Aluno excluído com sucesso!');
+      carregarAlunos();
     } catch (e) {
-      setMensagem({ tipo: 'erro', texto: textoErro(e) });
+      mostrarAviso('erro', e instanceof Error ? e.message : 'Erro inesperado');
     }
   }
 
@@ -103,7 +98,7 @@ export default function Home() {
           </button>
         </header>
 
-        {mensagem && <Mensagem tipo={mensagem.tipo} texto={mensagem.texto} />}
+        {avisoTexto && <Mensagem tipo={avisoTipo} texto={avisoTexto} />}
 
         <input
           value={busca}
@@ -114,11 +109,13 @@ export default function Home() {
 
         {erro && <Mensagem tipo="erro" texto={erro} />}
 
-        {carregando ? (
-          <p>Carregando...</p>
-        ) : alunos.length === 0 ? (
+        {carregando && <p>Carregando...</p>}
+
+        {!carregando && alunos.length === 0 && (
           <p className="text-gray-600">Nenhum aluno encontrado.</p>
-        ) : (
+        )}
+
+        {!carregando && alunos.length > 0 && (
           <div className="overflow-x-auto rounded border border-gray-200 bg-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-100">
