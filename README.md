@@ -52,59 +52,81 @@ npm run dev -- -p 3001
 
 5. Abrir no navegador: http://localhost:3001
 
-Rotas da API
+3. Estrutura de pastas
 
-| Método | Rota | O que faz |
-|---|---|---|
-| GET | /alunos | Lista todos (dá para filtrar com ?busca=) |
-| GET | /alunos/:id | Mostra um aluno |
-| POST | /alunos | Cadastra |
-| PUT | /alunos/:id | Atualiza o aluno (precisa mandar os campos obrigatórios) |
-| PATCH | /alunos/:id | Atualiza só o que for enviado |
-| DELETE | /alunos/:id | Exclui |
+Backend — API e banco de dados
 
-As respostas usam os códigos 200 (deu certo), 201 (criado), 400 (dados inválidos ou email repetido) e 404 (aluno não encontrado).
+Responsável por processar as requisições e gerenciar os dados dos alunos.
 
----
+backend/
+└── src/
+    ├── main.ts
+    ├── app.module.ts
+    ├── app.controller.ts
+    ├── app.service.ts
+    └── alunos/
+        ├── alunos.controller.ts
+        ├── alunos.service.ts
+        ├── alunos.module.ts
+        ├── dto/
+        └── schemas/
 
-## 3. Estrutura de pastas
+main.ts: inicia o servidor e configura as validações.
 
-/
-├── backend/                       a parte que guarda e organiza os dados (API)
-│   ├── src/
-│   │   ├── main.ts                liga o servidor e ativa as validações
-│   │   ├── app.module.ts          conecta o projeto ao MongoDB
-│   │   ├── app.controller.ts      veio pronto do NestJS ("Hello World"), não uso
-│   │   ├── app.service.ts         veio pronto do NestJS, não uso
-│   │   └── alunos/
-│   │       ├── alunos.controller.ts   recebe os pedidos (listar, cadastrar...) e passa para o service
-│   │       ├── alunos.service.ts      faz o trabalho: salva, busca, confere se o email já existe
-│   │       ├── alunos.module.ts       junta as peças da parte de alunos
-│   │       ├── dto/                   regras dos dados (o que é obrigatório, se o email é válido)
-│   │       └── schemas/               como o aluno é guardado no banco
-│   └── test/                      pasta de testes que veio pronta do NestJS, não usei
-│
-├── frontend/                      a parte das telas
-│   ├── .env.local                 endereço da API (não vai para o GitHub)
-│   └── src/
-│       ├── app/
-│       │   ├── page.tsx           tela principal: lista, busca e botões
-│       │   ├── layout.tsx         estrutura comum da página (título da aba, fonte)
-│       │   └── globals.css        estilos que valem para o site todo
-│       ├── components/
-│       │   ├── FormAluno.tsx      formulário usado para cadastrar e editar
-│       │   ├── DetalhesAluno.tsx  o que aparece na janela de detalhes
-│       │   ├── Modal.tsx          a janela que aparece por cima da tela
-│       │   └── Mensagem.tsx       o aviso verde (deu certo) ou vermelho (deu erro)
-│       ├── lib/
-│       │   └── api.ts             todas as conversas com o back-end ficam aqui
-│       └── types/
-│           └── aluno.ts           define quais informações um aluno tem
-│
-├── .gitignore                     arquivos que não devem ir para o GitHub
-└── README.md                      este arquivo
+app.module.ts: configura o módulo principal e a conexão com o MongoDB.
 
----
+app.controller.ts e app.service.ts: arquivos padrão do NestJS, não utilizados no projeto.
+
+alunos.controller.ts: recebe as requisições, como listar e cadastrar alunos.
+
+alunos.service.ts: executa as operações e validações dos alunos.
+
+alunos.module.ts: organiza os componentes do módulo de alunos.
+
+dto/: define as regras de validação dos dados.
+
+schemas/: define a estrutura dos dados armazenados no MongoDB.
+
+Frontend — Interface do usuário
+
+Responsável pelas telas e pela interação com o usuário.
+
+frontend/
+├── .env.local
+└── src/
+    ├── app/
+    │   ├── page.tsx
+    │   ├── layout.tsx
+    │   └── globals.css
+    ├── components/
+    │   ├── FormAluno.tsx
+    │   ├── DetalhesAluno.tsx
+    │   ├── Modal.tsx
+    │   └── Mensagem.tsx
+    ├── lib/
+    │   └── api.ts
+    └── types/
+        └── aluno.ts
+
+page.tsx: tela principal, com listagem, busca e ações dos alunos.
+
+layout.tsx: define a estrutura geral da página.
+
+globals.css: contém os estilos globais.
+
+FormAluno.tsx: formulário de cadastro e edição.
+
+DetalhesAluno.tsx: exibe os detalhes de um aluno.
+
+Modal.tsx: componente de janela modal.
+
+Mensagem.tsx: exibe mensagens de sucesso ou erro.
+
+api.ts: centraliza as chamadas para o backend.
+
+aluno.ts: define os tipos de dados dos alunos.
+
+.env.local: armazena variáveis de ambiente locais, como a URL da API.
 
 ## 4. O que ficou faltando e o que eu melhoraria
 
