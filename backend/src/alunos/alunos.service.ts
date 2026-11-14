@@ -17,7 +17,6 @@ export class AlunosService {
   ) {}
 
   async create(dto: CreateAlunoDto) {
-    // confere se já existe alguém com esse email
     const emailExiste = await this.alunoModel.findOne({
       email: dto.email.toLowerCase(),
     });
@@ -29,15 +28,12 @@ export class AlunosService {
   }
 
   async findAll(busca?: string) {
-    // pega todos os alunos do banco
     const alunos = await this.alunoModel.find().sort({ criado_em: 1 });
 
-    // se não tem busca, devolve todos
     if (!busca) {
       return alunos;
     }
 
-    // se tem busca, filtra por nome ou email
     const termo = busca.toLowerCase();
     return alunos.filter(
       (aluno) =>
@@ -57,12 +53,10 @@ export class AlunosService {
   async update(id: string, dto: UpdateAlunoDto) {
     const aluno = await this.findOne(id);
 
-    // só confere o email se ele foi enviado
     if (dto.email) {
       const outro = await this.alunoModel.findOne({
         email: dto.email.toLowerCase(),
       });
-      // se achou e não é o próprio aluno, o email já está em uso
       if (outro && outro._id !== id) {
         throw new BadRequestException('Já existe um aluno com este email');
       }

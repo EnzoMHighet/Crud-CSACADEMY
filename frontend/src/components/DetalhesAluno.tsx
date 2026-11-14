@@ -9,7 +9,6 @@ export default function DetalhesAluno({ id }: { id: string }) {
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [erro, setErro] = useState('');
 
-  // busca o aluno na API quando a janela abre
   useEffect(() => {
     async function carregar() {
       try {

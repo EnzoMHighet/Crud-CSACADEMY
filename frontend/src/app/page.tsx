@@ -8,45 +8,53 @@ import Modal from '@/components/Modal';
 import { excluirAluno, listarAlunos } from '@/lib/api';
 import { Aluno } from '@/types/aluno';
 
+type Feedback = { tipo: 'sucesso' | 'erro'; texto: string };
+
+const textoErro = (e: unknown) =>
+  e instanceof Error ? e.message : 'Erro inesperado';
+
 export default function Home() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
-
-  // aviso verde (sucesso) ou vermelho (erro) que aparece no topo
-  const [avisoTipo, setAvisoTipo] = useState<'sucesso' | 'erro'>('sucesso');
-  const [avisoTexto, setAvisoTexto] = useState('');
-
-  // controle das janelas que aparecem por cima da tela
+  const [termo, setTermo] = useState('');
+  const [versao, setVersao] = useState(0);
+  const [mensagem, setMensagem] = useState<Feedback | null>(null);
   const [formAberto, setFormAberto] = useState(false);
   const [alunoEmEdicao, setAlunoEmEdicao] = useState<Aluno | null>(null);
   const [detalheId, setDetalheId] = useState<string | null>(null);
 
-  // busca a lista de alunos na API
-  async function carregarAlunos() {
-    try {
-      const dados = await listarAlunos(busca);
-      setAlunos(dados);
-      setErro('');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro inesperado');
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  // carrega a lista quando a página abre e sempre que a busca muda
   useEffect(() => {
-    carregarAlunos();
+    const t = setTimeout(() => setTermo(busca), 400);
+    return () => clearTimeout(t);
   }, [busca]);
 
-  // mostra o aviso e some com ele depois de 4 segundos
-  function mostrarAviso(tipo: 'sucesso' | 'erro', texto: string) {
-    setAvisoTipo(tipo);
-    setAvisoTexto(texto);
-    setTimeout(() => setAvisoTexto(''), 4000);
-  }
+  useEffect(() => {
+    let cancelado = false;
+    listarAlunos(termo)
+      .then((dados) => {
+        if (cancelado) return;
+        setAlunos(dados);
+        setErro('');
+      })
+      .catch((e) => {
+        if (!cancelado) setErro(textoErro(e));
+      })
+      .finally(() => {
+        if (!cancelado) setCarregando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [termo, versao]);
+
+  // Some com a mensagem depois de 4 segundos
+  useEffect(() => {
+    if (!mensagem) return;
+    const t = setTimeout(() => setMensagem(null), 4000);
+    return () => clearTimeout(t);
+  }, [mensagem]);
 
   function abrirNovo() {
     setAlunoEmEdicao(null);
@@ -63,25 +71,20 @@ export default function Home() {
     setAlunoEmEdicao(null);
   }
 
-  // o formulário chama essa função quando salva com sucesso
   function aoSalvar(texto: string) {
     fecharForm();
-    mostrarAviso('sucesso', texto);
-    carregarAlunos();
+    setMensagem({ tipo: 'sucesso', texto });
+    setVersao((v) => v + 1);
   }
 
   async function excluir(aluno: Aluno) {
-    const confirmou = window.confirm(
-      `Tem certeza que deseja excluir ${aluno.nome}?`,
-    );
-    if (!confirmou) return;
-
+    if (!window.confirm(`Tem certeza que deseja excluir ${aluno.nome}?`)) return;
     try {
       await excluirAluno(aluno.id);
-      mostrarAviso('sucesso', 'Aluno excluído com sucesso!');
-      carregarAlunos();
+      setMensagem({ tipo: 'sucesso', texto: 'Aluno excluído com sucesso!' });
+      setVersao((v) => v + 1);
     } catch (e) {
-      mostrarAviso('erro', e instanceof Error ? e.message : 'Erro inesperado');
+      setMensagem({ tipo: 'erro', texto: textoErro(e) });
     }
   }
 
@@ -98,7 +101,7 @@ export default function Home() {
           </button>
         </header>
 
-        {avisoTexto && <Mensagem tipo={avisoTipo} texto={avisoTexto} />}
+        {mensagem && <Mensagem tipo={mensagem.tipo} texto={mensagem.texto} />}
 
         <input
           value={busca}
@@ -109,13 +112,11 @@ export default function Home() {
 
         {erro && <Mensagem tipo="erro" texto={erro} />}
 
-        {carregando && <p>Carregando...</p>}
-
-        {!carregando && alunos.length === 0 && (
+        {carregando ? (
+          <p>Carregando...</p>
+        ) : alunos.length === 0 ? (
           <p className="text-gray-600">Nenhum aluno encontrado.</p>
-        )}
-
-        {!carregando && alunos.length > 0 && (
+        ) : (
           <div className="overflow-x-auto rounded border border-gray-200 bg-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-100">
